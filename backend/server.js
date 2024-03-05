@@ -1,13 +1,15 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const nodemailer = require('nodemailer');
+const bcrypt = require('bcrypt');
 
 const app = express();
-const PORT = process.env.PORT || 5030;
+const PORT = process.env.PORT || 5000;
+const cors = require('cors');
 
-mongoose.connect('mongodb://localhost:27017/schrodingers-signup', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+mongoose.connect('mongodb+srv://zarektronix:zarektronix@cluster0.oyyga7r.mongodb.net/', {
+  serverSelectionTimeoutMS: 30000,
 });
 const User = mongoose.model('User', {
   name: String,
@@ -17,7 +19,7 @@ const User = mongoose.model('User', {
 });
 
 app.use(bodyParser.json());
-
+app.use(cors());
 app.post('/api/signup', async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -29,9 +31,10 @@ app.post('/api/signup', async (req, res) => {
     if (existingUser) {
       throw new Error('Email is already registered.');
     }
-    const newUser = new User({ name, email, password, verified: false });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password:hashedPassword, verified: false });
     await newUser.save();
-
+    sendVerificationEmail(newUser);
     res.json({ success: true, message: 'User signed up successfully.Please check your email for verification.' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -56,13 +59,14 @@ app.get('/api/verify/:token', async (req, res) => {
 });
 function sendVerificationEmail(user) {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587, 
+    secure: false, 
     auth: {
-      user: 'sravanipyla04@gmail.com',
-      pass: 'Demo@123',
-    },
-  });
-
+        user: 'zarektronix', 
+        pass: 'ohlp yjux efjy ulir' 
+    }
+});
   const mailOptions = {
     from: 'sandhyapyla.8@gmail.com',
     to: user.email,
